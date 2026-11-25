@@ -2,7 +2,7 @@
 
 **0:00–0:20 — Introduce the flow.** Show the Mermaid architecture in the README. Explain that the demo uses a fictional roofing company, synthetic customer data, and mock provider adapters.
 
-**0:20–0:45 — Run locally.** Start the container or `npm start`, then open `/healthz` and `/readyz`. Point out that no real provider credentials are present.
+**0:20–0:45 — Run locally.** Run `npm run demo` to execute the complete mock flow, or start the container and open `/healthz` and `/readyz`. Point out that no real provider credentials are used by the demo command.
 
 **0:45–1:10 — Simulate a call.** POST `samples/vapi-tool-calls.json` to `/webhooks/vapi` with the local bearer secret. Show the future mock slots generated from the configured business hours. Then book one slot with a synthetic phone number and show `status=simulated`; no real appointment is created. Submit the same payload again and show that it is acknowledged as a duplicate.
 
