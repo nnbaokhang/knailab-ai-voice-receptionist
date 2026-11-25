@@ -1,0 +1,18 @@
+[
+  {
+    "name": "Alex Morgan",
+    "phone": "+13035550101",
+    "email": "alex.morgan@example.test",
+    "address": "123 Example Avenue, Denver, CO 80202",
+    "request": "Roof leak inspection after heavy rain; no active water intrusion.",
+    "consent": "Caller initiated the inbound call."
+  },
+  {
+    "name": "Jordan Lee",
+    "phone": "+17205550102",
+    "email": "jordan.lee@example.test",
+    "address": "45 Sample Street, Aurora, CO 80012",
+    "request": "Routine shingle replacement estimate.",
+    "consent": "Caller initiated the inbound call."
+  }
+]

@@ -1,0 +1,24 @@
+{
+  "name": "Pine Ridge Roofing — Post-call follow-up",
+  "artifactType": "Make scenario mapping specification",
+  "importableBlueprint": false,
+  "note": "Make scenario exports include account-specific custom webhook and connection identifiers. Build this flow in Make, then export its official blueprint from the scenario editor. This file is an implementation mapping, not a Make import file.",
+  "trigger": {
+    "module": "Webhooks > Custom webhook",
+    "input": "POST payload sent by MAKE_POST_CALL_WEBHOOK_URL",
+    "deduplicationKey": "eventId"
+  },
+  "routes": [
+    {
+      "name": "Urgent lead",
+      "filter": "summary.urgency is emergency or urgent",
+      "action": "Send an immediate notification to the roofing dispatcher with callId, callback phone, serviceRequested, propertyAddress, and summary."
+    },
+    {
+      "name": "Routine follow-up",
+      "filter": "summary.urgency is routine or unknown",
+      "action": "Send a standard follow-up notification with callId, callerName, callback phone, requested appointment, and summary."
+    }
+  ],
+  "samplePayload": "../samples/vapi-end-of-call-report.json"
+}

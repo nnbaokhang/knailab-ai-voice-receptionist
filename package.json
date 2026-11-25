@@ -1,0 +1,17 @@
+{
+  "name": "knailab-ai-voice-receptionist",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "dev": "node --experimental-strip-types --watch src/index.ts",
+    "start": "node --experimental-strip-types src/index.ts",
+    "test": "node --experimental-strip-types --test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}

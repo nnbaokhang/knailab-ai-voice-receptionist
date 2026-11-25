@@ -1,0 +1,12 @@
+{
+  "message": {
+    "type": "end-of-call-report",
+    "call": {
+      "id": "demo-call-200",
+      "customer": { "number": "+13035550101" }
+    },
+    "artifact": {
+      "transcript": "Assistant: Thanks for calling Pine Ridge Roofing. Caller: This is Alex Morgan. We have a small roof leak near the upstairs bedroom after last night's rain. Assistant: Is water actively coming in now? Caller: No, it stopped. I would like an inspection next week. My address is 123 Example Avenue, Denver, CO."
+    }
+  }
+}

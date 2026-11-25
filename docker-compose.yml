@@ -1,0 +1,13 @@
+services:
+  receptionist:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    volumes:
+      - receptionist-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  receptionist-data:

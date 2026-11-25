@@ -1,0 +1,38 @@
+[
+  {
+    "type": "function",
+    "server": { "url": "https://your-public-host.example/webhooks/vapi" },
+    "function": {
+      "name": "check_appointment_availability",
+      "description": "Check the demo roofing inspection availability before offering appointment times.",
+      "parameters": { "type": "object", "properties": {}, "required": [], "additionalProperties": false }
+    }
+  },
+  {
+    "type": "function",
+    "server": { "url": "https://your-public-host.example/webhooks/vapi" },
+    "function": {
+      "name": "book_appointment",
+      "description": "Create a pending human-confirmation request for one of the returned available slots. Do not say the booking is confirmed.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "requestedStart": { "type": "string", "description": "Exact ISO-8601 UTC slot returned by availability." },
+          "phone": { "type": "string", "description": "Caller callback phone in E.164 format." },
+          "callerName": { "type": "string" }
+        },
+        "required": ["requestedStart", "phone", "callerName"],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "server": { "url": "https://your-public-host.example/webhooks/vapi" },
+    "function": {
+      "name": "prepare_human_transfer",
+      "description": "Record the caller's request to speak with a person. After the result, use the separately configured Vapi Transfer Call tool only after the caller agrees.",
+      "parameters": { "type": "object", "properties": { "reason": { "type": "string" } }, "required": ["reason"], "additionalProperties": false }
+    }
+  }
+]

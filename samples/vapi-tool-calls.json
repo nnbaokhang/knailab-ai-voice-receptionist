@@ -1,0 +1,12 @@
+{
+  "message": {
+    "type": "tool-calls",
+    "call": { "id": "demo-call-100" },
+    "toolCallList": [
+      {
+        "id": "tool-availability-1",
+        "function": { "name": "check_appointment_availability", "arguments": "{}" }
+      }
+    ]
+  }
+}
