@@ -41,6 +41,7 @@ cp .env.example .env
 # Set EVENT_STORE_ENCRYPTION_KEY to base64 of 32 random bytes for durable encrypted replay.
 # Example generator: openssl rand -base64 32
 npm ci
+npm run demo
 npm test
 npm run typecheck
 npm start
@@ -84,6 +85,8 @@ curl -i -X POST \
 ```
 
 This demo-only failure injection is used by the automated integration test. `MOCK_FAIL_ONCE` should not be set in a live deployment.
+
+For a complete local run without manually starting the server, use `npm run demo`. It starts an ephemeral local server, checks future mock slots, creates a simulated booking, verifies duplicate-booking protection, injects a Make failure, and replays the call report. It prints `No live provider calls were made` in its final summary.
 
 ## Vapi, Twilio, and provider setup
 
