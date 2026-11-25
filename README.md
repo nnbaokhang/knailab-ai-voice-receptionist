@@ -11,6 +11,7 @@ flowchart TD
   Caller --> Twilio["Twilio number"]
   Twilio --> Vapi["Vapi assistant · OpenAI"]
   Vapi --> Service["Node.js webhook service"]
+  Service --> Calendar["Google Calendar API"]
   Service --> Store["Encrypted failed-event store"]
   Service --> GHL["HighLevel CRM"]
   Service --> Make["Make.com webhook"]
@@ -21,11 +22,11 @@ The Twilio number is imported into Vapi and assigned to the assistant. Vapi send
 ## Included
 
 - Vapi assistant and function-tool configuration examples for an OpenAI model.
-- Appointment availability and pending booking tools. These use demo slots and do not create a real calendar event.
+- Appointment availability and booking tools with real Google Calendar `freeBusy` checks and event inserts in live mode; mock mode uses future configured business-hour slots and labels bookings as simulated.
 - Vapi Transfer Call is configured separately in Vapi with a real, reachable E.164 destination. The tool configuration intentionally leaves the destination unset.
 - Structured post-call summary, optionally generated with OpenAI Structured Outputs.
 - HighLevel contact upsert and optional pipeline opportunity upsert.
-- Make Custom Webhook integration and scenario mapping specification.
+- Make Custom Webhook integration and scenario mapping specification. The account-level Google Calendar and Twilio credentials have been connected and verified in Make; no Make scenario is deployed yet.
 - Bearer-protected Vapi webhooks and event replay route; timing-safe secret comparison.
 - Event deduplication, transient HTTP retry with `Retry-After`, encrypted failed-event payload storage, redacted logs, and health checks.
 - Docker, GitHub Actions, mock mode, synthetic payloads, and unit/integration tests.
@@ -92,7 +93,8 @@ See [`docs/integrations.md`](docs/integrations.md) for integration boundaries an
 2. Create the function tools represented by [`config/vapi-tools.json`](config/vapi-tools.json), set each tool's server URL to the deployed `/webhooks/vapi`, and attach the returned tool IDs to the assistant. Configure a Vapi Server URL credential to send `Authorization: Bearer <VAPI_WEBHOOK_SECRET>`.
 3. Add a Vapi Transfer Call tool in the dashboard with the real human destination, set a caller-consent rule in its description, then attach it to the assistant. The app's `prepare_human_transfer` function only returns a handoff instruction; Vapi performs the phone transfer.
 4. Import an owned Twilio number into Vapi. Test inbound calls only after the number, Vapi assistant, credential, and public HTTPS URL are configured.
-5. Configure HighLevel scopes and location/pipeline IDs, then set the Make Custom Webhook URL. Build Make from [`make/scenario-spec.json`](make/scenario-spec.json). That file is a mapping spec, not an importable scenario export; export the actual blueprint from Make after creating its account-specific webhook and connections.
+5. Configure Google Calendar OAuth credentials for the Node service in your deployment secret manager. The Make Calendar connection is separate and cannot be reused by this service. Set `GOOGLE_CALENDAR_ID`, business hours, time zone, and minimum notice. In live mode, the service reads busy intervals and creates calendar events; the calendar connection must be tested against a dedicated demo calendar before live calls.
+6. Configure HighLevel scopes and location/pipeline IDs, then set the Make Custom Webhook URL. Build Make from [`make/scenario-spec.json`](make/scenario-spec.json). That file is a mapping spec, not an importable scenario export; export the actual blueprint from Make after creating its account-specific webhook and connections.
 
 Use [`docs/live-setup-checklist.md`](docs/live-setup-checklist.md) to collect the non-secret identifiers and place secrets in the appropriate provider dashboard or deployment secret store. Never paste keys into chat or commit them.
 
@@ -103,8 +105,7 @@ Use [`docs/live-setup-checklist.md`](docs/live-setup-checklist.md) to collect th
 - Failed-event payloads are encrypted before disk persistence. Logs use allowlisted fields and exclude common secret and PII fields.
 - Outbound provider calls retry timeouts, HTTP 408/425/429, and 5xx using exponential backoff. Non-transient 4xx errors fail and are stored for operator replay.
 - The JSON file event store is a single-process demo adapter. For multiple replicas or higher-volume deployment, replace it with a transactional database and shared locking/idempotency store before production.
-- The appointment slots are fixed synthetic demo data. Human confirmation is required; no calendar service is integrated.
-- `MOCK_INTEGRATIONS=true` is the default. Set `MOCK_INTEGRATIONS=false` only after supplying and validating real credentials. Live mode requires the secret, encryption key, HighLevel token/location, and Make webhook URL.
+- `MOCK_INTEGRATIONS=true` is the default. Set `MOCK_INTEGRATIONS=false` only after supplying and validating real credentials. Live mode requires the Vapi secret, encryption key, HighLevel token/location/pipeline, Make webhook URL, and Google Calendar OAuth credentials.
 - Secrets must come from the deployment secret manager. Keep provider credentials out of GitHub, logs, frontend code, and screenshots.
 
 ## Test and CI
@@ -127,9 +128,11 @@ Tests cover retry behavior, encrypted storage, webhook authentication, deduplica
 
 | Criterion | Local result | Live status |
 |---|---|---|
-| End-to-end workflow | Automated mock test exercises event intake, summary, CRM/Make adapters | Pending provider accounts |
+| End-to-end workflow | Automated mock test exercises Vapi tool calls, simulated calendar booking, event intake, summary, CRM/Make adapters | Pending live provider acceptance |
 | Simulated API failure and recovery | Make mock failure is stored, then replayed successfully | Pending live failure drill |
 | Duplicate webhook prevention | Same event ID returns duplicate acknowledgement; no second workflow run | Pending Vapi retry drill |
 | Credential handling | `.env.example`, bearer secrets, encrypted event payloads, redacted logs | Pending secret-manager review |
 | Automated tests | `npm test` | Run in CI after push |
 | Reproduction instructions | README and demo script | Complete for mock mode |
+
+The verified Make Google Calendar and Twilio connections establish credential access only. They do not mean any scenario is built, activated, or end-to-end tested. The Twilio connection is not embedded in this repository; rotate its Auth Token if it was exposed outside Make, and avoid outbound messages until a test destination and consent behavior are configured.
