@@ -30,7 +30,7 @@ Set `MAKE_POST_CALL_WEBHOOK_URL` to a Make Custom Webhook URL. Make receives an 
 | HighLevel | Synthetic contact ID | Contact upsert; opportunity upsert when pipeline IDs exist | No |
 | Make.com | In-process delivery simulation | Make Custom Webhook URL | No |
 
-Live mode is an integration path in the source code, not proof that provider credentials or tenant settings have been tested. A successful real call, CRM record check, Make run, and replay test are still required before describing the system as production ready.
+Live mode is an integration path in the source code, not proof that provider credentials or tenant settings have been tested. Live mode fails closed when required HighLevel or Make credentials are missing; it never silently substitutes the mock adapter. A successful real call, CRM record check, Make run, and replay test are still required before describing the system as production ready.
 
 ## Provider documentation checked for this implementation
 

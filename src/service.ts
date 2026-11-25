@@ -127,7 +127,7 @@ export function createReceptionistServer(options: ServiceOptions = {}): { server
       if (req.method === "GET" && url.pathname === "/readyz") {
         const mock = process.env.MOCK_INTEGRATIONS !== "false";
         const required = ["VAPI_WEBHOOK_SECRET", "ADMIN_API_KEY"];
-        if (!mock) required.push("GHL_ACCESS_TOKEN", "GHL_LOCATION_ID", "MAKE_POST_CALL_WEBHOOK_URL", "EVENT_STORE_ENCRYPTION_KEY");
+        if (!mock) required.push("GHL_ACCESS_TOKEN", "GHL_LOCATION_ID", "GHL_PIPELINE_ID", "GHL_PIPELINE_STAGE_ID", "MAKE_POST_CALL_WEBHOOK_URL", "EVENT_STORE_ENCRYPTION_KEY");
         const missing = required.filter((key) => !process.env[key]);
         return send(res, missing.length ? 503 : 200, { ok: missing.length === 0, mode: mock ? "mock" : "live", missing });
       }

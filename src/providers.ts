@@ -16,10 +16,11 @@ export class Providers {
 
   async makePostCall(payload: JsonObject): Promise<{ delivered: boolean; mode: "mock" | "live" }> {
     const url = process.env.MAKE_POST_CALL_WEBHOOK_URL;
-    if (this.mock || !url) {
+    if (this.mock) {
       this.failOnce("make");
       return { delivered: true, mode: "mock" };
     }
+    if (!url) throw new Error("MAKE_POST_CALL_WEBHOOK_URL is required in live mode");
     const response = await fetchWithRetry(this.fetcher, url, {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
     }, retryOptions());
@@ -30,10 +31,11 @@ export class Providers {
   async syncHighLevel(summary: CallSummary, callId: string): Promise<{ contactId: string; mode: "mock" | "live" }> {
     const token = process.env.GHL_ACCESS_TOKEN;
     const locationId = process.env.GHL_LOCATION_ID;
-    if (this.mock || !token || !locationId) {
+    if (this.mock) {
       this.failOnce("ghl");
       return { contactId: `mock-contact-${callId}`, mode: "mock" };
     }
+    if (!token || !locationId) throw new Error("GHL_ACCESS_TOKEN and GHL_LOCATION_ID are required in live mode");
     const base = (process.env.GHL_API_BASE_URL ?? "https://services.leadconnectorhq.com").replace(/\/$/, "");
     const contact = await this.requestJson(`${base}/contacts/upsert`, {
       method: "POST",
@@ -53,8 +55,8 @@ export class Providers {
 
     const pipelineId = process.env.GHL_PIPELINE_ID;
     const pipelineStageId = process.env.GHL_PIPELINE_STAGE_ID;
-    if (pipelineId && pipelineStageId) {
-      await this.requestJson(`${base}/opportunities/upsert`, {
+    if (!pipelineId || !pipelineStageId) throw new Error("GHL_PIPELINE_ID and GHL_PIPELINE_STAGE_ID are required in live mode");
+    await this.requestJson(`${base}/opportunities/upsert`, {
         method: "POST",
         headers: { authorization: `Bearer ${token}`, version: "v3", "content-type": "application/json" },
         body: JSON.stringify({
@@ -64,8 +66,7 @@ export class Providers {
           source: "AI Voice Receptionist",
           notes: summary.summary,
         }),
-      });
-    }
+    });
     return { contactId, mode: "live" };
   }
 
