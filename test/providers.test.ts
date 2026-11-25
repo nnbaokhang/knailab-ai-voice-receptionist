@@ -23,3 +23,16 @@ test("live mode refuses missing Make and HighLevel settings instead of returning
     if (old.location) process.env.GHL_LOCATION_ID = old.location; else delete process.env.GHL_LOCATION_ID;
   }
 });
+
+test("live appointment tools refuse missing Google OAuth configuration", async () => {
+  const keys = ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN"] as const;
+  const old = keys.map((key) => process.env[key]);
+  process.env.MOCK_INTEGRATIONS = "false";
+  for (const key of keys) delete process.env[key];
+  try {
+    await assert.rejects(new Providers().appointmentAvailability(), /GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN/);
+  } finally {
+    process.env.MOCK_INTEGRATIONS = "true";
+    keys.forEach((key, index) => old[index] === undefined ? delete process.env[key] : process.env[key] = old[index]!);
+  }
+});

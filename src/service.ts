@@ -6,8 +6,6 @@ import { Providers } from "./providers.ts";
 import type { CallSummary, JsonObject, VapiMessage, VapiToolCall } from "./types.ts";
 
 type ServiceOptions = { store?: EventStore; providers?: Providers };
-const appointmentSlots = ["2026-11-26T16:00:00Z", "2026-11-27T18:30:00Z", "2026-11-28T17:00:00Z"];
-const appointments = new Map<string, JsonObject>();
 
 function safeEqual(received: string, expected: string | undefined): boolean {
   if (!expected || !received) return false;
@@ -94,20 +92,34 @@ function transcriptOf(message: VapiMessage): string {
   return messages?.map((entry) => String(entry.message ?? entry.content ?? "")).join("\n") ?? "";
 }
 
-async function runTool(message: VapiMessage, call: VapiToolCall): Promise<JsonObject> {
+async function runTool(message: VapiMessage, call: VapiToolCall, providers: Providers): Promise<JsonObject> {
   const name = String(call.function?.name ?? call.name ?? "");
   const args = parseArgs(call);
   if (name === "check_appointment_availability") {
-    return callToolResult(call, { availableSlots: appointmentSlots, timezone: "America/Denver" });
+    const availability = await providers.appointmentAvailability();
+    return callToolResult(call, availability);
   }
   if (name === "book_appointment") {
     const requested = String(args.requestedStart ?? "");
     const contactPhone = String(args.phone ?? "");
-    if (!appointmentSlots.includes(requested)) return callToolResult(call, { booked: false, reason: "That slot is not available. Offer one of the listed times." });
+    const callerName = String(args.callerName ?? "").trim();
+    if (!callerName || callerName.length > 160) return callToolResult(call, { booked: false, reason: "A caller name is required to book an appointment." });
     if (!/^\+[1-9]\d{7,14}$/.test(contactPhone)) return callToolResult(call, { booked: false, reason: "A valid phone number is required to reserve an appointment." });
-    const appointmentId = randomUUID();
-    appointments.set(appointmentId, { appointmentId, requestedStart: requested, phone: contactPhone, status: "pending_human_confirmation" });
-    return callToolResult(call, { booked: true, appointmentId, requestedStart: requested, status: "pending_human_confirmation" });
+    try {
+      const result = await providers.bookAppointment({
+        requestedStart: requested,
+        callId: callIdOf(message),
+        phone: contactPhone,
+        callerName,
+        summary: {
+          serviceRequested: typeof args.serviceRequested === "string" ? args.serviceRequested.slice(0, 160) : null,
+          propertyAddress: typeof args.propertyAddress === "string" ? args.propertyAddress.slice(0, 400) : null,
+        },
+      });
+      return callToolResult(call, result);
+    } catch {
+      return callToolResult(call, { booked: false, reason: "That time could not be confirmed. Offer another listed time or take a callback request." });
+    }
   }
   if (name === "prepare_human_transfer") {
     return callToolResult(call, { transferRequested: true, instruction: "Use the configured Vapi Transfer Call tool now. If no destination is configured, take a message and promise a callback." });
@@ -128,12 +140,12 @@ export function createReceptionistServer(options: ServiceOptions = {}): { server
       if (req.method === "GET" && url.pathname === "/readyz") {
         const mock = process.env.MOCK_INTEGRATIONS !== "false";
         const required = ["VAPI_WEBHOOK_SECRET", "ADMIN_API_KEY"];
-        if (!mock) required.push("GHL_ACCESS_TOKEN", "GHL_LOCATION_ID", "GHL_PIPELINE_ID", "GHL_PIPELINE_STAGE_ID", "MAKE_POST_CALL_WEBHOOK_URL", "EVENT_STORE_ENCRYPTION_KEY");
+        if (!mock) required.push("GHL_ACCESS_TOKEN", "GHL_LOCATION_ID", "GHL_PIPELINE_ID", "GHL_PIPELINE_STAGE_ID", "MAKE_POST_CALL_WEBHOOK_URL", "EVENT_STORE_ENCRYPTION_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN");
         const missing = required.filter((key) => !process.env[key]);
         return send(res, missing.length ? 503 : 200, { ok: missing.length === 0, mode: mock ? "mock" : "live", missing });
       }
       if (req.method === "GET" && url.pathname === "/demo/state" && process.env.NODE_ENV !== "production") {
-        return send(res, 200, { mode: process.env.MOCK_INTEGRATIONS === "false" ? "live" : "mock", events: store.list().map(({ eventId, type, status, attempts }) => ({ eventId, type, status, attempts })), appointments: [...appointments.values()].map(({ phone: _phone, ...appointment }) => appointment) });
+        return send(res, 200, { mode: process.env.MOCK_INTEGRATIONS === "false" ? "live" : "mock", events: store.list().map(({ eventId, type, status, attempts }) => ({ eventId, type, status, attempts })) });
       }
       if (req.method === "POST" && url.pathname.startsWith("/admin/replay/")) {
         if (!safeEqual(String(req.headers.authorization ?? "").replace(/^Bearer\s+/i, ""), process.env.ADMIN_API_KEY)) return send(res, 401, { error: "unauthorized" });
@@ -191,7 +203,7 @@ async function processVapiMessage(message: VapiMessage, eventId: string, correla
     if (type === "tool-calls") {
       const calls = (message.toolCallList ?? []) as VapiToolCall[];
       const results: JsonObject[] = [];
-      for (const call of calls) results.push(await runTool(message, call));
+      for (const call of calls) results.push(await runTool(message, call, providers));
       await store.update(eventId, { status: "completed", lastError: undefined });
       log("info", "vapi_tool_calls_handled", { correlationId, eventId, count: calls.length });
       return { results };

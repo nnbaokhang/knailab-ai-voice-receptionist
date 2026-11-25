@@ -6,18 +6,31 @@
   "trigger": {
     "module": "Webhooks > Custom webhook",
     "input": "POST payload sent by MAKE_POST_CALL_WEBHOOK_URL",
-    "deduplicationKey": "eventId"
+    "expectedPayload": {
+      "eventId": "stable Vapi event identifier",
+      "callId": "Vapi call identifier",
+      "summary": "structured CallSummary",
+      "crmContactId": "HighLevel contact identifier",
+      "source": "vapi-end-of-call-report"
+    },
+    "deduplicationKey": "eventId",
+    "dedupeImplementation": "Use a Make Data Store keyed by eventId. Create the key before any external notification; route an existing key to a no-op path. If a later module fails, mark the key failed and allow an operator to replay after checking whether the side effect completed."
+  },
+  "reliability": {
+    "errorHandler": "Use Make incomplete executions and an error handler that records eventId, callId, module, and a redacted error. Do not log the full transcript, phone, address, or tokens.",
+    "replay": "Before manual replay, check whether the downstream operation completed to avoid duplicate notifications.",
+    "privacy": "Pass only the fields needed by each downstream module; keep the raw transcript out of this scenario."
   },
   "routes": [
     {
       "name": "Urgent lead",
-      "filter": "summary.urgency is emergency or urgent",
-      "action": "Send an immediate notification to the roofing dispatcher with callId, callback phone, serviceRequested, propertyAddress, and summary."
+      "filter": "summary.urgency equals emergency or urgent",
+      "action": "Create an operator review task or notify a configured dispatcher. Only configure a real notification after an approved destination is supplied."
     },
     {
       "name": "Routine follow-up",
-      "filter": "summary.urgency is routine or unknown",
-      "action": "Send a standard follow-up notification with callId, callerName, callback phone, requested appointment, and summary."
+      "filter": "summary.urgency equals routine or unknown",
+      "action": "Add a standard follow-up task or notify a configured dispatcher. Only configure a real notification after an approved destination is supplied."
     }
   ],
   "samplePayload": "../samples/vapi-end-of-call-report.json"

@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22.13" },
+  "engines": { "node": ">=24" },
   "scripts": {
     "dev": "node --experimental-strip-types --watch src/index.ts",
     "start": "node --experimental-strip-types src/index.ts",
+    "demo": "node --experimental-strip-types scripts/demo.ts",
     "test": "node --experimental-strip-types --test",
     "typecheck": "tsc --noEmit"
   },

@@ -16,6 +16,18 @@ The live adapter calls `POST /contacts/upsert` with `Version: v3` and a location
 
 If the HighLevel request fails, the encrypted event is marked failed. Use the authenticated replay route after correcting the integration. The upsert endpoints are used to reduce duplicate contact and opportunity creation on retries; confirm your location's duplicate policies in a sandbox first.
 
+## Google Calendar
+
+The Vapi availability and booking functions use the Google Calendar API directly. This is separate from the verified Google Calendar connection in Make: Make's OAuth token is not available to this Node service. Configure an OAuth client and refresh token for the service, keep them in the deployment secret manager, and use the Calendar scopes required for free/busy reads and event creation. `freeBusy.query` filters candidate slots; booking checks availability again and inserts an event with a deterministic event ID derived from the Vapi call ID and requested start time. A repeated insert for the same call and slot returns an idempotent success.
+
+Business hours, time zone, slot duration, minimum notice, and days ahead are configurable. Defaults are Monday–Friday, 9:00 a.m.–5:00 p.m. America/Denver, 60-minute slots, 2-hour notice, and a 7-day window. Vapi may claim an appointment is confirmed only when the live calendar tool returns `booked=true`, `status=confirmed`, and `mode=live`. Mock bookings are labeled `simulated`.
+
+Google Calendar does not provide a transactional slot lock for this flow. If multiple booking workers or other schedulers can book the same slot concurrently, use a shared transactional lock/idempotency store and reconcile calendar writes before treating it as production-grade scheduling.
+
+## Twilio connection in Make
+
+The Twilio credential is stored as a Make-managed connection and is not embedded in this source tree or a shareable blueprint. The current scenario does not send SMS or outbound calls; do not add outbound actions until a verified consent policy, message template, and intended destination are configured.
+
 ## Make.com
 
 Set `MAKE_POST_CALL_WEBHOOK_URL` to a Make Custom Webhook URL. Make receives an event after CRM sync succeeds, with an `eventId` idempotency key and a structured summary. The checked-in `make/scenario-spec.json` is a mapping spec, not an importable Make blueprint. Create the custom webhook and account connections in Make, then export the official blueprint from Make after configuration. The app cannot verify a Make scenario without the user's Make workspace and credentials.
@@ -28,6 +40,9 @@ Set `MAKE_POST_CALL_WEBHOOK_URL` to a Make Custom Webhook URL. Make receives an 
 | Twilio number | Not connected | Import an owned number into Vapi | No |
 | OpenAI | Deterministic fallback summary | OpenAI API Structured Outputs | No |
 | HighLevel | Synthetic contact ID | Contact upsert; opportunity upsert when pipeline IDs exist | No |
+| Google Calendar in Node | Future business-hour slots; mock booking only | OAuth refresh-token access, FreeBusy query, event insert | No |
+| Google Calendar in Make | Synthetic only | Make-managed Calendar connection | Credential connection verified; no workflow execution |
+| Twilio in Make | Synthetic only | Make-managed credential connection; no outbound actions configured | Credential connection verified; no workflow execution |
 | Make.com | In-process delivery simulation | Make Custom Webhook URL | No |
 
 Live mode is an integration path in the source code, not proof that provider credentials or tenant settings have been tested. Live mode fails closed when required HighLevel or Make credentials are missing; it never silently substitutes the mock adapter. A successful real call, CRM record check, Make run, and replay test are still required before describing the system as production ready.
@@ -38,6 +53,8 @@ Live mode is an integration path in the source code, not proof that provider cre
 - [Vapi Function tools](https://docs.vapi.ai/tools/custom-tools)
 - [Vapi Twilio number import](https://docs.vapi.ai/phone-numbers/import-twilio)
 - [Twilio webhook signature security](https://www.twilio.com/docs/usage/webhooks/webhooks-security)
+- [Google Calendar FreeBusy query](https://developers.google.com/workspace/calendar/api/v3/reference/freebusy/query)
+- [Google Calendar event insert](https://developers.google.com/workspace/calendar/api/v3/reference/events/insert)
 - [OpenAI Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs)
 - [HighLevel contact upsert](https://marketplace.gohighlevel.com/docs/ghl/contacts/upsert-contact/)
 - [HighLevel opportunity upsert](https://marketplace.gohighlevel.com/docs/ghl/opportunities/upsert-opportunity/)

@@ -4,7 +4,7 @@
     "server": { "url": "https://your-public-host.example/webhooks/vapi" },
     "function": {
       "name": "check_appointment_availability",
-      "description": "Check the demo roofing inspection availability before offering appointment times.",
+      "description": "Check real roofing inspection availability in Google Calendar before offering any appointment times. Offer only returned ISO timestamps and state times in the configured local time zone.",
       "parameters": { "type": "object", "properties": {}, "required": [], "additionalProperties": false }
     }
   },
@@ -13,13 +13,15 @@
     "server": { "url": "https://your-public-host.example/webhooks/vapi" },
     "function": {
       "name": "book_appointment",
-      "description": "Create a pending human-confirmation request for one of the returned available slots. Do not say the booking is confirmed.",
+      "description": "Book one of the exact available ISO timestamps returned by check_appointment_availability. The server checks Google Calendar again and creates a real event. Say the appointment is confirmed only if the result has booked=true, status=confirmed, and mode=live. If mode=mock, say this is a demonstration and no real booking was made.",
       "parameters": {
         "type": "object",
         "properties": {
           "requestedStart": { "type": "string", "description": "Exact ISO-8601 UTC slot returned by availability." },
           "phone": { "type": "string", "description": "Caller callback phone in E.164 format." },
-          "callerName": { "type": "string" }
+          "callerName": { "type": "string" },
+          "serviceRequested": { "type": "string" },
+          "propertyAddress": { "type": "string" }
         },
         "required": ["requestedStart", "phone", "callerName"],
         "additionalProperties": false

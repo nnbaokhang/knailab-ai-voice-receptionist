@@ -21,7 +21,8 @@ Use a dedicated demo tenant and synthetic contacts. Do not use a real customer's
 
 ## 3. Twilio number
 
-- Use a Twilio number reserved for the demo. Import it into Vapi and assign it to the assistant. Twilio credentials are entered in Vapi's number-import form; the Node service does not need the Twilio Auth Token for this routing design.
+- The Twilio credential connection has been added and verified in Make for the `Create a Message` module. The current scenario does not send messages. Do not use the shared credential in source code, local `.env`, or a blueprint; rotate it if exposed outside the provider's credential manager.
+- Use a Twilio number reserved for the demo. Import it into Vapi and assign it to the assistant. The Node service does not need the Twilio Auth Token for this routing design.
 - Place an inbound test call from an authorized test phone. Verify call answer, tool invocation, transfer behavior, and end-of-call report delivery.
 - If changing to a direct Twilio-to-Node webhook, add Twilio SDK signature validation at that endpoint using the exact external URL. Do not reuse the Vapi bearer-secret check as Twilio signature verification.
 
@@ -32,18 +33,25 @@ Use a dedicated demo tenant and synthetic contacts. Do not use a real customer's
 - Set `GHL_LOCATION_ID`, `GHL_PIPELINE_ID`, and `GHL_PIPELINE_STAGE_ID`. Confirm duplicate-contact and opportunity policies in the demo location.
 - Make one synthetic test call and verify exactly one contact and one open opportunity are created with the expected source and tags.
 
-## 5. Make.com scenario
+## 5. Google Calendar
+
+- The Google Calendar connection has been added and verified in Make for free/busy, search, and event creation modules. The Node service requires a separate Google OAuth client and refresh token; it cannot read Make's stored credentials.
+- Create a dedicated demo calendar and provide the service OAuth credentials through the deployment secret manager. Grant the minimum required Calendar scopes for free/busy and event creation.
+- Configure `GOOGLE_CALENDAR_ID`, `GOOGLE_CALENDAR_TIMEZONE`, business hours, slot duration, days ahead, and minimum notice. Verify the configured time zone against the roofing team's real schedule.
+- Test availability and confirmed event creation using synthetic caller details. Check the calendar event before using the tool with a real number.
+
+## 6. Make.com scenario
 
 - Create a Make Custom Webhook named for the roofing demo. Configure its scenario from `make/scenario-spec.json`; it receives the call ID, summary, and HighLevel contact ID after CRM sync.
-- The intended flow is webhook intake → deduplication by `eventId` → urgent/routine router → notification action for the demo dispatcher. Use synthetic destination data for the customer presentation.
+- The intended flow is webhook intake → deduplication by `eventId` → urgent/routine router → an approved dispatcher notification action. The current repository contains a mapping specification, not an importable blueprint, and no scenario has been created in the Make workspace.
 - Copy the generated webhook URL directly into the deployment secret manager as `MAKE_POST_CALL_WEBHOOK_URL`. Treat it as a secret because anyone holding it may be able to trigger the scenario.
 - The checked-in mapping file is not an importable blueprint. After configuring the scenario and its account connections in Make, export its blueprint and replace the mapping spec only after importing and running that export in a clean demo team.
 - Replay the same `eventId` twice and confirm only one downstream notification. Test Make's error handler and the app's `/admin/replay/{eventId}` recovery.
 
-## 6. Acceptance run before the customer demo
+## 7. Acceptance run before the customer demo
 
 - Real inbound test call answers through the imported Twilio number.
-- Available appointment slots are fetched from the selected calendar and a booking is actually written. The current repository uses fixed demo slots and pending human confirmation; a calendar provider and its credentials must be selected and implemented before this acceptance item can pass.
+- Available appointment slots are fetched from the selected calendar and a booking is actually written. This code path is implemented, but live Node-to-Calendar credentials and the live booking test are still pending.
 - Human transfer reaches the configured test destination after caller consent.
 - A real HighLevel contact and opportunity appear once.
 - A real Make scenario run appears once; duplicate webhook and replay tests do not send duplicate notifications.
