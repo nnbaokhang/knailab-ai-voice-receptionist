@@ -1,4 +1,5 @@
 import { fetchWithRetry } from "./retry.ts";
+import { buildCandidateSlots, currentCalendarConfig, GoogleCalendar } from "./calendar.ts";
 import type { CallSummary, JsonObject } from "./types.ts";
 
 const retryOptions = () => ({
@@ -9,10 +10,42 @@ const retryOptions = () => ({
 export class Providers {
   private mockCounters = new Map<string, number>();
   private readonly fetcher: typeof fetch;
+  private readonly calendar: GoogleCalendar;
+  private mockBooked = new Map<string, { booked: true; appointmentId: string; requestedStart: string; status: "simulated" }>();
 
-  constructor(fetcher: typeof fetch = fetch) { this.fetcher = fetcher; }
+  constructor(fetcher: typeof fetch = fetch) { this.fetcher = fetcher; this.calendar = new GoogleCalendar(fetcher); }
 
   private get mock(): boolean { return process.env.MOCK_INTEGRATIONS !== "false"; }
+
+  async appointmentAvailability(): Promise<{ availableSlots: string[]; timeZone: string; mode: "mock" | "live" }> {
+    if (this.mock) {
+      this.failOnce("calendar");
+      const settings = currentCalendarConfig();
+      const taken = new Set([...this.mockBooked.values()].map((appointment) => appointment.requestedStart));
+      const availableSlots = buildCandidateSlots(new Date(), settings).filter((slot) => !taken.has(slot.start)).slice(0, 8).map((slot) => slot.start);
+      return { availableSlots, timeZone: settings.timeZone, mode: "mock" };
+    }
+    const result = await this.calendar.availability();
+    return { ...result, mode: "live" };
+  }
+
+  async bookAppointment(input: { requestedStart: string; callId: string; phone: string; callerName: string; summary?: Pick<CallSummary, "serviceRequested" | "propertyAddress"> }): Promise<{ booked: true; appointmentId: string; requestedStart: string; status: "confirmed" | "simulated"; idempotent?: boolean; mode: "mock" | "live" }> {
+    if (this.mock) {
+      this.failOnce("calendar");
+      const key = `${input.callId}:${input.requestedStart}`;
+      const existing = this.mockBooked.get(key);
+      if (existing) return { ...existing, idempotent: true, mode: "mock" };
+      const settings = currentCalendarConfig();
+      const slotExists = buildCandidateSlots(new Date(Date.now() - settings.minNoticeMinutes * 60_000), settings).some((slot) => slot.start === input.requestedStart);
+      if (!slotExists) throw new Error("Requested slot is outside configured appointment hours or lead time");
+      if ([...this.mockBooked.values()].some((appointment) => appointment.requestedStart === input.requestedStart)) throw new Error("Requested slot is no longer available");
+      const appointment = { booked: true as const, appointmentId: `mock-event-${this.mockBooked.size + 1}`, requestedStart: input.requestedStart, status: "simulated" as const };
+      this.mockBooked.set(key, appointment);
+      return { ...appointment, mode: "mock" };
+    }
+    const result = await this.calendar.book(input);
+    return { ...result, mode: "live" };
+  }
 
   async makePostCall(payload: JsonObject): Promise<{ delivered: boolean; mode: "mock" | "live" }> {
     const url = process.env.MAKE_POST_CALL_WEBHOOK_URL;
@@ -110,7 +143,7 @@ export class Providers {
   private async requestJson(url: string, init: RequestInit): Promise<unknown> {
     const response = await fetchWithRetry(this.fetcher, url, init, retryOptions());
     const text = await response.text();
-    if (!response.ok) throw new Error(`Provider returned HTTP ${response.status}: ${text.slice(0, 200)}`);
+    if (!response.ok) throw new Error(`Provider returned HTTP ${response.status}`);
     return text ? JSON.parse(text) : {};
   }
 
