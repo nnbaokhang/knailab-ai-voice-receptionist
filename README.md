@@ -96,7 +96,7 @@ See [`docs/integrations.md`](docs/integrations.md) for integration boundaries an
 
 ## Reliability and security notes
 
-- Vapi events are acknowledged by event ID. Repeated completed/in-progress IDs do not rerun downstream work.
+- Vapi call reports are encrypted and durably recorded before the webhook is acknowledged; CRM and Make work then runs asynchronously so provider latency does not block Vapi. Repeated completed/in-progress IDs do not rerun downstream work. Pending records are retried on process startup.
 - Failed events can be replayed with `POST /admin/replay/{eventId}` and the admin bearer key. Only failed events are replayable.
 - Failed-event payloads are encrypted before disk persistence. Logs use allowlisted fields and exclude common secret and PII fields.
 - Outbound provider calls retry timeouts, HTTP 408/425/429, and 5xx using exponential backoff. Non-transient 4xx errors fail and are stored for operator replay.
@@ -117,6 +117,7 @@ Tests cover retry behavior, encrypted storage, webhook authentication, deduplica
 ## Demo materials
 
 - Two-minute walkthrough: [`docs/demo-script.md`](docs/demo-script.md)
+- Example mock execution: [`samples/demo-execution.md`](samples/demo-execution.md)
 - Upwork portfolio blurb: [`docs/upwork-description.md`](docs/upwork-description.md)
 - Sample Vapi payloads and synthetic contacts: [`samples/`](samples/)
 

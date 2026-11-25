@@ -114,7 +114,7 @@ async function runTool(message: VapiMessage, call: VapiToolCall): Promise<JsonOb
   return callToolResult(call, { error: `Unsupported function: ${name}` });
 }
 
-export function createReceptionistServer(options: ServiceOptions = {}): { server: Server; store: EventStore; providers: Providers } {
+export function createReceptionistServer(options: ServiceOptions = {}): { server: Server; store: EventStore; providers: Providers; recoverPending: () => Promise<void> } {
   const store = options.store ?? new EventStore(process.env.EVENT_STORE_PATH ?? "./data/events.json");
   const providers = options.providers ?? new Providers();
 
@@ -158,6 +158,11 @@ export function createReceptionistServer(options: ServiceOptions = {}): { server
       const begun = await store.begin(eventId, type, body, correlationId);
       if (begun.duplicate && begun.record.status !== "failed") return send(res, 200, { accepted: true, duplicate: true, status: begun.record.status });
       if (begun.duplicate && begun.record.status === "failed") return send(res, 200, { accepted: true, duplicate: true, status: "failed", replay: `/admin/replay/${encodeURIComponent(eventId)}` });
+      if (type === "end-of-call-report") {
+        // Persist before acknowledging Vapi; downstream provider latency stays off the webhook response path.
+        void processVapiMessage(message, eventId, correlationId, store, providers);
+        return send(res, 202, { accepted: true, queued: true, eventId });
+      }
       const result = await processVapiMessage(message, eventId, correlationId, store, providers);
       return send(res, 200, result);
     } catch (error) {
@@ -165,7 +170,17 @@ export function createReceptionistServer(options: ServiceOptions = {}): { server
       return send(res, 500, { error: "internal_error", correlationId });
     }
   });
-  return { server, store, providers };
+  const recoverPending = async (): Promise<void> => {
+    const pending = store.list().filter((record) => record.status === "processing");
+    for (const record of pending) {
+      try {
+        await processVapiMessage(messageOf(unseal(record.encryptedPayload)), record.eventId, record.correlationId, store, providers);
+      } catch {
+        // processVapiMessage records a failed state; do not expose payloads during startup recovery.
+      }
+    }
+  };
+  return { server, store, providers, recoverPending };
 }
 
 async function processVapiMessage(message: VapiMessage, eventId: string, correlationId: string, store: EventStore, providers: Providers): Promise<JsonObject> {

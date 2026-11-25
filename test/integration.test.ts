@@ -53,7 +53,13 @@ test("failed post-call webhook is stored and replayed successfully", async () =>
   try {
     const headers = { authorization: "Bearer test-vapi-secret", "content-type": "application/json" };
     const first = await fetch(`${baseUrl}/webhooks/vapi`, { method: "POST", headers, body: JSON.stringify(body) });
-    assert.equal((await first.json() as { accepted: boolean }).accepted, false);
+    const queued = await first.json() as { accepted: boolean; queued: boolean };
+    assert.equal(first.status, 202);
+    assert.equal(queued.accepted, true);
+    assert.equal(queued.queued, true);
+    for (let attempt = 0; attempt < 100 && store.get("demo-call-200:end-of-call-report")?.status === "processing"; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
     assert.equal(store.get("demo-call-200:end-of-call-report")?.status, "failed");
     const replay = await fetch(`${baseUrl}/admin/replay/demo-call-200%3Aend-of-call-report`, { method: "POST", headers: { authorization: "Bearer test-admin-secret" } });
     assert.equal(replay.status, 202);

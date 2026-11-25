@@ -1,8 +1,9 @@
 import { createReceptionistServer } from "./service.ts";
 import { log } from "./logger.ts";
 
-const { server, store } = createReceptionistServer();
+const { server, store, recoverPending } = createReceptionistServer();
 await store.load();
+await recoverPending();
 const port = Number(process.env.PORT ?? 8080);
 server.listen(port, "0.0.0.0", () => log("info", "server_started", { port, mode: process.env.MOCK_INTEGRATIONS === "false" ? "live" : "mock" }));
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
