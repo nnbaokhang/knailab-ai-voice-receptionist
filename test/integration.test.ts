@@ -25,9 +25,9 @@ test("webhook authenticates, handles function calls, and deduplicates retries", 
     const body = { message: { type: "tool-calls", call: { id: "demo-call-100" }, toolCallList: [{ id: "tool-1", function: { name: "check_appointment_availability", arguments: "{}" } }] } };
     const headers = { authorization: "Bearer test-vapi-secret", "content-type": "application/json" };
     const first = await fetch(`${baseUrl}/webhooks/vapi`, { method: "POST", headers, body: JSON.stringify(body) });
-    const firstJson = await first.json() as { results: Array<{ result: { availableSlots: string[] } }> };
+    const firstJson = await first.json() as { results: Array<{ result: string }> };
     assert.equal(first.status, 200);
-    assert.equal(firstJson.results[0].result.availableSlots.length, 3);
+    assert.equal(JSON.parse(firstJson.results[0].result).availableSlots.length, 3);
     const duplicate = await fetch(`${baseUrl}/webhooks/vapi`, { method: "POST", headers, body: JSON.stringify(body) });
     assert.deepEqual(await duplicate.json(), { accepted: true, duplicate: true, status: "completed" });
   } finally {

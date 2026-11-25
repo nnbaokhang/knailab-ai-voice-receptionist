@@ -2,7 +2,7 @@
 
 ## Vapi and OpenAI
 
-The assistant configuration sets `model.provider` to `openai` and uses `gpt-4o-mini`. Vapi sends `tool-calls` and `end-of-call-report` server messages to `/webhooks/vapi`. Function-call tools return the Vapi `results` envelope; call reports are summarized with OpenAI Structured Outputs when `OPENAI_API_KEY` is configured.
+The assistant configuration sets `model.provider` to `openai` and uses `gpt-4o-mini`. Vapi sends `tool-calls` and `end-of-call-report` server messages to `/webhooks/vapi`. Function-call tools return the Vapi `results` envelope, with each `result` serialized as a string; call reports are summarized with OpenAI Structured Outputs when `OPENAI_API_KEY` is configured.
 
 Use a Vapi Server URL credential to send `Authorization: Bearer <VAPI_WEBHOOK_SECRET>`. The service checks the token with a constant-time comparison. Do not put the Vapi private API key in this webhook service.
 
@@ -42,3 +42,4 @@ Live mode is an integration path in the source code, not proof that provider cre
 - [HighLevel contact upsert](https://marketplace.gohighlevel.com/docs/ghl/contacts/upsert-contact/)
 - [HighLevel opportunity upsert](https://marketplace.gohighlevel.com/docs/ghl/opportunities/upsert-opportunity/)
 - [Make scenario API and blueprint handling](https://developers.make.com/api-documentation/api-reference/scenarios)
+- [Make scenario blueprint import and export](https://help.make.com/blueprints)

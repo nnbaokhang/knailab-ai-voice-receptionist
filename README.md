@@ -94,6 +94,8 @@ See [`docs/integrations.md`](docs/integrations.md) for integration boundaries an
 4. Import an owned Twilio number into Vapi. Test inbound calls only after the number, Vapi assistant, credential, and public HTTPS URL are configured.
 5. Configure HighLevel scopes and location/pipeline IDs, then set the Make Custom Webhook URL. Build Make from [`make/scenario-spec.json`](make/scenario-spec.json). That file is a mapping spec, not an importable scenario export; export the actual blueprint from Make after creating its account-specific webhook and connections.
 
+Use [`docs/live-setup-checklist.md`](docs/live-setup-checklist.md) to collect the non-secret identifiers and place secrets in the appropriate provider dashboard or deployment secret store. Never paste keys into chat or commit them.
+
 ## Reliability and security notes
 
 - Vapi call reports are encrypted and durably recorded before the webhook is acknowledged; CRM and Make work then runs asynchronously so provider latency does not block Vapi. Repeated completed/in-progress IDs do not rerun downstream work. Pending records are retried on process startup.

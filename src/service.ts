@@ -61,7 +61,8 @@ function parseArgs(call: VapiToolCall): JsonObject {
 }
 
 function callToolResult(call: VapiToolCall, result: unknown): JsonObject {
-  return { toolCallId: call.id ?? call.toolCallId ?? "unknown-tool-call", result };
+  const serialized = typeof result === "string" ? result : JSON.stringify(result);
+  return { toolCallId: call.id ?? call.toolCallId ?? "unknown-tool-call", result: serialized };
 }
 
 function fallbackSummary(message: VapiMessage): CallSummary {
